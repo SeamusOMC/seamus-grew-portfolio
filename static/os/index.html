@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Séamus Grew - Portfolio</title>
+  <link rel="icon" href="../images/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="os.css">
+</head>
+
+<body>
+  <div id="desktop">
+    <div id="icons"></div>
+    <div id="windows"></div>
+    <div id="start-menu" hidden>
+      <div id="start-rail"></div>
+      <div id="start-list"></div>
+      <div id="start-tiles"></div>
+    </div>
+  </div>
+  <div id="taskbar">
+    <button id="start-button" aria-label="Start">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <rect x="1" y="1" width="8" height="8" />
+        <rect x="11" y="1" width="8" height="8" />
+        <rect x="1" y="11" width="8" height="8" />
+        <rect x="11" y="11" width="8" height="8" />
+      </svg>
+    </button>
+    <button id="taskbar-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10" cy="10" r="6" />
+        <path d="M15 15l6 6" />
+      </svg>
+      <span>Type here to search</span>
+    </button>
+    <div id="taskbar-apps"></div>
+    <div id="taskbar-tray">
+      <div id="taskbar-clock"></div>
+      <button id="show-desktop" aria-label="Show desktop"></button>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="os.js"></script>
+</body>
+
+</html>

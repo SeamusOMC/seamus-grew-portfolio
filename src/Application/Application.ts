@@ -1,0 +1,96 @@
+import * as THREE from 'three';
+
+import Sizes from './Utils/Sizes';
+import Time from './Utils/Time';
+import Camera from './Camera/Camera';
+import Renderer from './Renderer';
+import Mouse from './Utils/Mouse';
+
+//@ts-ignore
+import World from './World/World';
+import Resources from './Utils/Resources';
+
+import sources from './sources';
+
+import Stats from 'stats.js';
+import Loading from './Utils/Loading';
+
+import UI from './UI';
+
+let instance: Application | null = null;
+
+export default class Application {
+    sizes: Sizes;
+    time: Time;
+    scene: THREE.Scene;
+    cssScene: THREE.Scene;
+    overlayScene: THREE.Scene;
+    resources: Resources;
+    camera: Camera;
+    renderer: Renderer;
+    world: World;
+    mouse: Mouse;
+    loading: Loading;
+    ui: UI;
+    stats: Stats | undefined;
+
+    constructor() {
+        // Singleton
+        if (instance) {
+            return instance;
+        }
+
+        instance = this;
+
+        // Setup
+        this.sizes = new Sizes();
+        this.mouse = new Mouse();
+        this.loading = new Loading();
+        this.time = new Time();
+        this.scene = new THREE.Scene();
+        this.cssScene = new THREE.Scene();
+        this.overlayScene = new THREE.Scene();
+        this.resources = new Resources(sources);
+        this.camera = new Camera();
+        this.renderer = new Renderer();
+        this.camera.createControls();
+        this.world = new World();
+
+        this.ui = new UI();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('debug')) {
+            // Global access for debugging
+            //@ts-ignore
+            window.Application = this;
+
+            this.stats = new Stats();
+            this.stats.showPanel(0);
+
+            document.body.appendChild(this.stats.dom);
+        }
+
+        // Resize event
+        this.sizes.on('resize', () => {
+            this.resize();
+        });
+
+        // Time tick event
+        this.time.on('tick', () => {
+            this.update();
+        });
+    }
+
+    resize() {
+        this.camera.resize();
+        this.renderer.resize();
+    }
+
+    update() {
+        if (this.stats) this.stats.begin();
+        this.camera.update();
+        this.world.update();
+        this.renderer.update();
+        if (this.stats) this.stats.end();
+    }
+}
