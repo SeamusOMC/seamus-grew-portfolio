@@ -7,6 +7,11 @@ import { FLOOR_Y, LAMP, SCREEN } from './SetupConfig';
 // How long the room takes to fade between light and dark, in milliseconds
 const FADE_MS = 450;
 
+// The paper tag tied to the cord, in world units
+const TAG = { width: 190, height: 280, corner: 45, hole: 38 };
+// Handwriting font for the tag, with fallbacks until it has loaded
+const TAG_FONT = 'Caveat, "Segoe Script", "Ink Free", "Bradley Hand", cursive';
+
 /**
  * The room's lighting, and the floor lamp whose pull cord switches it.
  *
@@ -33,6 +38,8 @@ export default class RoomLight {
     tinted: { material: THREE.MeshBasicMaterial; dark: THREE.Color }[];
 
     cord: THREE.Group;
+    tagCanvas: HTMLCanvasElement;
+    tagTexture: THREE.CanvasTexture;
     pull: number;
 
     constructor() {
@@ -183,10 +190,172 @@ export default class RoomLight {
         );
         toggle.position.y = -LAMP.cordLength - 40;
         toggle.castShadow = true;
-        this.cord.add(string, toggle);
+        this.cord.add(string, toggle, this.createTag());
         lamp.add(this.cord);
 
         this.scene.add(lamp);
+    }
+
+    /**
+     * A handwritten paper tag tied under the toggle, saying what a pull will do
+     */
+    createTag() {
+        const tag = new THREE.Group();
+        const top = -LAMP.cordLength - 85;
+        const { width, height, corner, hole } = TAG;
+
+        // Thread from the toggle to the hole in the tag
+        const thread = new THREE.Mesh(
+            new THREE.CylinderGeometry(2, 2, 26 + hole, 6),
+            new THREE.MeshStandardMaterial({ color: 0xe9e4d6, roughness: 0.9 })
+        );
+        thread.position.y = top - (26 + hole) / 2;
+        tag.add(thread);
+
+        // The card hangs a little crooked
+        const card = new THREE.Group();
+        card.position.set(0, top - 26, 6);
+        card.rotation.set(0, -0.14, 0.09);
+
+        const outline = new THREE.Shape();
+        outline.moveTo(-width / 2 + corner, 0);
+        outline.lineTo(width / 2 - corner, 0);
+        outline.lineTo(width / 2, -corner);
+        outline.lineTo(width / 2, -height);
+        outline.lineTo(-width / 2, -height);
+        outline.lineTo(-width / 2, -corner);
+        outline.closePath();
+        const punched = new THREE.Path();
+        punched.absarc(0, -hole, 12, 0, Math.PI * 2, true);
+        outline.holes.push(punched);
+
+        const paper = new THREE.Mesh(
+            new THREE.ExtrudeGeometry(outline, { depth: 5, bevelEnabled: false }),
+            new THREE.MeshStandardMaterial({ color: 0xd9cfae, roughness: 0.9 })
+        );
+        paper.castShadow = true;
+        card.add(paper);
+
+        // The writing, on a sheet covering the front of the card
+        this.tagCanvas = document.createElement('canvas');
+        this.tagCanvas.width = width * 2;
+        this.tagCanvas.height = height * 2;
+        this.tagTexture = new THREE.CanvasTexture(this.tagCanvas);
+        this.tagTexture.encoding = THREE.sRGBEncoding;
+        this.tagTexture.anisotropy = 8;
+        const face = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, height),
+            new THREE.MeshStandardMaterial({
+                map: this.tagTexture,
+                alphaTest: 0.5,
+                roughness: 0.9,
+            })
+        );
+        face.position.set(0, -height / 2, 5.6);
+        card.add(face);
+        tag.add(card);
+
+        this.drawTag();
+        // Redraw once the handwriting font has arrived
+        new FontFace('Caveat', 'url(fonts/caveat.woff2)')
+            .load()
+            .then((font) => {
+                document.fonts.add(font);
+                this.drawTag();
+            })
+            .catch(() => {});
+
+        return tag;
+    }
+
+    /**
+     * Writes the tag: "dark mode" with a moon while the light is on, and
+     * "light mode" with a sun once it is off
+     */
+    drawTag() {
+        const context = this.tagCanvas.getContext('2d');
+        if (!context) return;
+        const scale = this.tagCanvas.width / TAG.width;
+        const w = this.tagCanvas.width;
+        const h = this.tagCanvas.height;
+        const corner = TAG.corner * scale;
+        const paper = '#f4ecd6';
+        const ink = '#2a2833';
+
+        const trace = (inset: number) => {
+            context.beginPath();
+            context.moveTo(corner + inset * 0.4, inset);
+            context.lineTo(w - corner - inset * 0.4, inset);
+            context.lineTo(w - inset, corner + inset * 0.4);
+            context.lineTo(w - inset, h - inset);
+            context.lineTo(inset, h - inset);
+            context.lineTo(inset, corner + inset * 0.4);
+            context.closePath();
+        };
+
+        context.clearRect(0, 0, w, h);
+        trace(0);
+        context.fillStyle = paper;
+        context.fill();
+
+        // Stitched border and the reinforced hole
+        trace(16);
+        context.setLineDash([12, 9]);
+        context.strokeStyle = '#c4b385';
+        context.lineWidth = 3;
+        context.stroke();
+        context.setLineDash([]);
+        const holeY = TAG.hole * scale;
+        context.beginPath();
+        context.arc(w / 2, holeY, 12 * scale + 12, 0, Math.PI * 2);
+        context.fillStyle = '#d8c79a';
+        context.fill();
+        context.globalCompositeOperation = 'destination-out';
+        context.beginPath();
+        context.arc(w / 2, holeY, 12 * scale, 0, Math.PI * 2);
+        context.fill();
+        context.globalCompositeOperation = 'source-over';
+
+        // A little moon or sun doodle
+        const doodleY = 190;
+        context.fillStyle = ink;
+        context.strokeStyle = ink;
+        context.lineCap = 'round';
+        if (this.dark) {
+            context.beginPath();
+            context.arc(w / 2, doodleY, 30, 0, Math.PI * 2);
+            context.fill();
+            context.lineWidth = 7;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2 + 0.2;
+                context.beginPath();
+                context.moveTo(w / 2 + Math.cos(angle) * 44, doodleY + Math.sin(angle) * 44);
+                context.lineTo(w / 2 + Math.cos(angle) * 62, doodleY + Math.sin(angle) * 62);
+                context.stroke();
+            }
+        } else {
+            context.beginPath();
+            context.arc(w / 2 - 6, doodleY, 46, 0, Math.PI * 2);
+            context.fill();
+            context.fillStyle = paper;
+            context.beginPath();
+            context.arc(w / 2 + 18, doodleY - 14, 40, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        // The handwriting, on a slight slant
+        context.save();
+        context.translate(w / 2, 0);
+        context.rotate(-0.07);
+        context.fillStyle = ink;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.font = 'bold 132px ' + TAG_FONT;
+        context.fillText(this.dark ? 'light' : 'dark', 0, 350);
+        context.fillText('mode', 0, 462);
+        context.restore();
+
+        this.tagTexture.needsUpdate = true;
     }
 
     /**
@@ -194,8 +363,9 @@ export default class RoomLight {
      * HTML button is placed over it in the 3D scene to take the click.
      */
     createCordButton() {
-        const width = 260;
-        const height = LAMP.cordLength + 220;
+        // Covers the cord, the toggle and the tag
+        const width = 320;
+        const height = LAMP.cordLength + 220 + TAG.height + 60;
 
         const button = document.createElement('div');
         button.id = 'light-cord';
@@ -230,6 +400,7 @@ export default class RoomLight {
     toggle() {
         this.dark = !this.dark;
         this.pull = 1;
+        this.drawTag();
         UIEventBus.dispatch('darkMode', this.dark);
     }
 
