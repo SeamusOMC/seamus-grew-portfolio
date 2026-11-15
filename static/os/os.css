@@ -258,6 +258,11 @@ p + p {
     color: var(--muted);
 }
 
+.note {
+    margin-top: 18px;
+    color: var(--muted);
+}
+
 .buttons {
     display: flex;
     flex-wrap: wrap;

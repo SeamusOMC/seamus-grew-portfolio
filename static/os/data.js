@@ -23,8 +23,8 @@ window.PORTFOLIO = {
     ],
 
     contact: {
-        email: 'seamusgrew12@outlook.com',
-        phone: '+44 7921 019170',
+        // Shown in place of an email address and phone number
+        note: 'For safety and privacy reasons, my email address and phone number are available on request through LinkedIn.',
         // File in this folder offered as a download
         cv: 'Seamus_Grew_CV.pdf',
         links: [

@@ -33,8 +33,6 @@
     const link = (url, label, className, extra) =>
         `<a class="${className || ''}" href="${esc(url)}" target="_blank" rel="noopener" ${extra || ''}>${esc(label)}</a>`;
 
-    const telLink = (phone) => 'tel:' + phone.replace(/[^+\d]/g, '');
-
     // ------------------------------------------------------------------ icons
 
     const ICONS = {
@@ -172,16 +170,13 @@
                 const c = data.contact;
                 return `
                 <h1>Get in touch</h1>
-                <p class="lead">The quickest way to reach me is by email.</p>
+                <p class="lead">The best way to reach me is through LinkedIn.</p>
                 <dl class="facts">
-                    <dt>Email</dt>
-                    <dd>${link('mailto:' + c.email, c.email)}</dd>
-                    ${c.phone ? `<dt>Phone</dt><dd>${link(telLink(c.phone), c.phone)}</dd>` : ''}
                     ${c.links.map((l) => `<dt>${esc(l.label)}</dt><dd>${link(l.url, l.url.replace(/^https?:\/\/(www\.)?/, ''))}</dd>`).join('')}
                 </dl>
+                <p class="note">${esc(c.note)}</p>
                 <div class="buttons">
-                    ${link('mailto:' + c.email, 'Send an email', 'button primary')}
-                    ${c.links.map((l) => link(l.url, l.label, 'button')).join('')}
+                    ${c.links.map((l, i) => link(l.url, l.label, i === 0 ? 'button primary' : 'button')).join('')}
                     ${c.cv ? '<button class="button" data-open="cv">My CV</button>' : ''}
                 </div>`;
             },
@@ -399,9 +394,9 @@
             education: () =>
                 data.education.map((e) => `${e.result.padEnd(4)} ${e.qualification}`).join('\n') + '\n',
             contact: () =>
-                [`Email: ${data.contact.email}`]
-                    .concat(data.contact.phone ? [`Phone: ${data.contact.phone}`] : [])
-                    .concat(data.contact.links.map((l) => `${l.label}: ${l.url}`))
+                data.contact.links
+                    .map((l) => `${l.label}: ${l.url}`)
+                    .concat([data.contact.note])
                     .join('\n') + '\n',
             cls: () => {
                 output.innerHTML = '';
